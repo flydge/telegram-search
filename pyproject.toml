@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools==80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "telegram-search-mcp"
+version = "0.1.0"
+description = "Read-only, evidence-backed Telegram chat search over STDIO MCP"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "mcp==2.2.0",
+]
+
+[project.scripts]
+telegram-search-mcp = "telegram_search_mcp.server:main"
+telegram-search-broker = "telegram_search_mcp.launch_agent:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

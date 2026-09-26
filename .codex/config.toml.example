@@ -1,0 +1,9 @@
+[mcp_servers.telegram_search]
+command = "/ABSOLUTE/PATH/TO/REPO/.venv/bin/telegram-search-mcp"
+args = []
+cwd = "/ABSOLUTE/PATH/TO/REPO"
+enabled = true
+required = true
+startup_timeout_sec = 30
+tool_timeout_sec = 600
+enabled_tools = ["_manifest", "resolve_target", "discover_targets", "search_correspondence"]
