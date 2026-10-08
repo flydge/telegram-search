@@ -18,5 +18,7 @@ enabled_tools = ["_manifest", "resolve_target", "discover_targets", "search_corr
 # DateTime messageText sources need both default-off reply_formatted_targets and
 # reply_datetime_targets, adding lexical/identity capabilities when present.
 # Only signed int32 unix_time with absent/null formatting_type is supported;
-# all DateTime overlaps, non-null formats and DateTime captions are unsupported.
+# DateTime overlaps and non-null formats are unsupported in 0.35.0.
+# Absent/null DateTime captions on documents, static photos and voice notes also
+# require reply_media_targets and reply_formatted_targets.
 # enabled_tools never grants source or send authority.

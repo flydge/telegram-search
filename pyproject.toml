@@ -27,7 +27,8 @@ version = {attr = "telegram_search_mcp.__version__"}
 
 [tool.setuptools.data-files]
 "share/telegram-search-mcp" = ["README.md"]
-"share/telegram-search-mcp/docs" = ["docs/security.md"]
+"share/telegram-search-mcp/docs" = ["docs/security.md", "docs/install.md", "docs/reference.md"]
+"share/telegram-search-mcp/docs/assets" = ["docs/assets/telegram-search-header.png"]
 "share/telegram-search-mcp/.codex" = [".codex/config.toml.example"]
 "share/telegram-search-mcp/skills/telegram-search" = ["skills/telegram-search/SKILL.md"]
 

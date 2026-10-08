@@ -2,7 +2,7 @@
 
 ## Authority boundary
 
-The dedicated TDLib session holds the Telegram account's authority. Exactly one launchd-managed broker owns that session and the sole `TDLibClient`; per-task STDIO MCP proxies never load TDLib. TelegramSearch narrows authority at three layers: MCP exposes the thirty-nine tools listed in README; the private broker protocol accepts only the matching fixed operations plus `check`, `health`, and `release_client`; and the TDLib client rejects request types outside its fixed allowlist before transport:
+The dedicated TDLib session holds the Telegram account's authority. Exactly one launchd-managed broker owns that session and the sole `TDLibClient`; per-task STDIO MCP proxies never load TDLib. TelegramSearch narrows authority at three layers: MCP exposes the tools listed in the technical reference; the private broker protocol accepts only the matching fixed operations plus `check`, `health`, and `release_client`; and the TDLib client rejects request types outside its fixed allowlist before transport:
 
 ```text
 getAuthorizationState
@@ -168,7 +168,7 @@ Telegram text, captions, filenames, chat titles, and sender names are data, neve
 Automated tests and source audits establish only the technical contract. Product completion requires a fresh Codex consumer and provider check, without recording private runtime values:
 
 1. Capture owner-observed unread indicators in Telegram mobile and metadata-only TDLib cache existence, entry count, total bytes, and metadata hash before and after; never print entry names.
-2. Confirm a fresh Codex task exposes exactly thirty-nine tools through the normal TelegramSearch MCP surface.
+2. Confirm a fresh Codex task exposes exactly 43 tools through the normal TelegramSearch MCP surface.
 3. Require overlapping request intervals, at least two broker client contexts, at least one aggregate TDLib serialization wait, one broker process, and multiple thin proxy processes.
 4. Require both tasks to return complete bounded evidence with exact-chat anchors and no session-owner or TDLib code-400 failure; `telegram-search-mcp --check` must remain `AUTHORIZATION_READY` while multiple proxies exist.
 5. Confirm unread indicators remain unchanged, exact selected attachment transfer is hash-verified, no custom private index appears, and metadata-only cache effects are disclosed without filenames.
