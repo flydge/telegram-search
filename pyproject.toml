@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "telegram-search-mcp"
 dynamic = ["version"]
-description = "Evidence-backed Telegram search and explicitly approved sending over STDIO MCP"
+description = "Unofficial Telegram MCP: read, search, and send messages, files, and voice notes with approval"
 requires-python = ">=3.11,<3.15"
 dependencies = [
   "mcp==2.2.0",
@@ -13,6 +13,10 @@ dependencies = [
   "python-docx==1.2.0",
   "Pillow==11.3.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/flydge/unofficial-telegram-mcp"
+Documentation = "https://github.com/flydge/unofficial-telegram-mcp#readme"
 
 [project.scripts]
 telegram-search-mcp = "telegram_search_mcp.server:main"
@@ -28,7 +32,7 @@ version = {attr = "telegram_search_mcp.__version__"}
 [tool.setuptools.data-files]
 "share/telegram-search-mcp" = ["README.md"]
 "share/telegram-search-mcp/docs" = ["docs/security.md", "docs/install.md", "docs/reference.md"]
-"share/telegram-search-mcp/docs/assets" = ["docs/assets/telegram-search-header.png"]
+"share/telegram-search-mcp/docs/assets" = ["docs/assets/unofficial-telegram-mcp-header.png"]
 "share/telegram-search-mcp/.codex" = [".codex/config.toml.example"]
 "share/telegram-search-mcp/skills/telegram-search" = ["skills/telegram-search/SKILL.md"]
 

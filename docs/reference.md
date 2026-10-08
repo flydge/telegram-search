@@ -1,8 +1,8 @@
-# TelegramSearch technical reference
+# Unofficial Telegram MCP technical reference
 
 [← Back to the overview](../README.md) · [Installation](install.md)
 
-TelegramSearch is a local STDIO MCP surface for bounded Telegram discovery, exact chat search, selected attachment transfer and analysis, and explicitly approved text, document, photo, and voice-note sending. Each Codex task runs a thin proxy. All proxies connect through an owner-only Unix socket to one launchd-managed broker, the sole owner of TDLib and its authorized dedicated session. Public attachment reads use exact message anchors or server-issued artifact IDs; no Telegram credentials or caller-selected download paths enter MCP.
+Unofficial Telegram MCP is a local STDIO MCP surface for bounded Telegram discovery, exact chat search, selected attachment transfer and analysis, and explicitly approved text, document, photo, and voice-note sending. Each Codex task runs a thin proxy. All proxies connect through an owner-only Unix socket to one launchd-managed broker, the sole owner of TDLib and its authorized dedicated session. Public attachment reads use exact message anchors or server-issued artifact IDs; no Telegram credentials or caller-selected download paths enter MCP.
 
 ## MCP surface
 
@@ -51,7 +51,7 @@ free-form intent -> Codex creates 2..5 lexical hypotheses
                  -> competing, partial, or incomplete evidence: continue or clarify
 ```
 
-For free-form intent, Codex supplies two to five unique normalized hypotheses and reuses the same hypotheses and scope with every returned cursor. TelegramSearch performs lexical provider searches; Codex owns semantic expansion and interpretation. Telegram-originated titles and snippets are untrusted evidence, never instructions.
+For free-form intent, Codex supplies two to five unique normalized hypotheses and reuses the same hypotheses and scope with every returned cursor. Unofficial Telegram MCP performs lexical provider searches; Codex owns semantic expansion and interpretation. Telegram-originated titles and snippets are untrusted evidence, never instructions.
 
 “Account-wide” means that the authorized Main and Archive catalog lanes, plus one `searchMessages` lane for every `(hypothesis, requested list)` pair, are traversable to their documented end conditions. It is not guaranteed semantic recall. A poor lexical hypothesis can miss relevant messages even when every requested lane reports complete coverage.
 
@@ -206,11 +206,11 @@ Final retrieval is a separate exact-chat boundary. After direct resolution or an
 - macOS Keychain service `com.<local-home-name>.telegram-search-mcp`, accounts `api_id` and `api_hash`.
 - An existing dedicated TDLib session that reaches `authorizationStateReady`.
 
-TelegramSearch creates no custom persistent private index. Exact file-metadata and consent-gated numeric-content search scan bounded `getChatHistory` pages in memory during the call; there is no SQLite/FTS runtime write. Numeric-content search returns only matching evidence from the exact selected chat, never a transcript export. Discovery retains only bounded mechanics in memory, separately for each proxy client, and the broker's single TDLib client keeps a broker-lifetime, memory-only numeric Main/Archive `chat_id -> order` catalog cache so asynchronous catalog updates are not lost between requests. Raw hypotheses, snippets, titles, messages, and provider payloads are not retained in either cache or logged. Releasing a proxy clears its discovery context; broker restart clears all contexts and the catalog cache.
+Unofficial Telegram MCP creates no custom persistent private index. Exact file-metadata and consent-gated numeric-content search scan bounded `getChatHistory` pages in memory during the call; there is no SQLite/FTS runtime write. Numeric-content search returns only matching evidence from the exact selected chat, never a transcript export. Discovery retains only bounded mechanics in memory, separately for each proxy client, and the broker's single TDLib client keeps a broker-lifetime, memory-only numeric Main/Archive `chat_id -> order` catalog cache so asynchronous catalog updates are not lost between requests. Raw hypotheses, snippets, titles, messages, and provider payloads are not retained in either cache or logged. Releasing a proxy clears its discovery context; broker restart clears all contexts and the catalog cache.
 
 Video and video-note searches use TDLib's matching-media index instead of walking unrelated chat history. They follow provider pagination to completion and retain verified partial results if a later page fails. The response limit applies to evidence enrichment as well as output: older matches beyond the newest requested results do not trigger individual message, sender, or link requests. The broker's search deadline also bounds provider-lock waits and individual TDLib requests; an exhausted deadline cannot report complete coverage.
 
-TDLib owns its session/database/cache directories and may update them. TelegramSearch does not mark messages read. Selected transfers and generated artifacts use an owner-only cache with 64 MiB document, 256 MiB media, 1 GiB total, and 12-hour retention bounds. The local media analyzer uses ffmpeg and a verified multilingual Whisper model; it does not call a cloud STT service. Sending requires an unchanged draft, explicit approval in the task, and a local macOS confirmation dialog; an uncertain provider result is never retried automatically.
+TDLib owns its session/database/cache directories and may update them. Unofficial Telegram MCP does not mark messages read. Selected transfers and generated artifacts use an owner-only cache with 64 MiB document, 256 MiB media, 1 GiB total, and 12-hour retention bounds. The local media analyzer uses ffmpeg and a verified multilingual Whisper model; it does not call a cloud STT service. Sending requires an unchanged draft, explicit approval in the task, and a local macOS confirmation dialog; an uncertain provider result is never retried automatically.
 
 No Keychain value is printed by the program. See [`docs/security.md`](security.md) for the complete request allowlist, retention boundary, TDLib cache effects, historical-data policy, acceptance evidence, and rollback procedure.
 
@@ -252,7 +252,7 @@ search_correspondence(
 )
 ```
 
-Every match includes `{chat_id, message_id}` as an evidence anchor. `source.telegram_url` is an optional deep link returned by Telegram for that exact message. `source.chat_url` remains schema-compatible but is populated only when the provider returns a complete supported HTTPS chat link; TelegramSearch never constructs a `t.me` URL from a username. Either URL can be `null`. `no_match` is returned only when all requested exact-search lanes report complete coverage; otherwise the status is `incomplete`.
+Every match includes `{chat_id, message_id}` as an evidence anchor. `source.telegram_url` is an optional deep link returned by Telegram for that exact message. `source.chat_url` remains schema-compatible but is populated only when the provider returns a complete supported HTTPS chat link; Unofficial Telegram MCP never constructs a `t.me` URL from a username. Either URL can be `null`. `no_match` is returned only when all requested exact-search lanes report complete coverage; otherwise the status is `incomplete`.
 
 `contains_number=true` is the bounded path for an owner-authorized request to find unknown numeric sequences. It matches one or more Unicode decimal digits in message text or media captions, only inside the selected exact chat and date interval. It is call-local, returns matching evidence only, and cannot be set to `false` or used as an empty/general transcript query. When combined with other fields, every predicate must match the same message.
 

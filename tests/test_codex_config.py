@@ -20,9 +20,9 @@ class CodexConfigTests(unittest.TestCase):
         )
         self.assertEqual(
             server["command"],
-            "/ABSOLUTE/PATH/TO/telegram-search/.venv/bin/telegram-search-mcp",
+            "/ABSOLUTE/PATH/TO/unofficial-telegram-mcp/.venv/bin/telegram-search-mcp",
         )
-        self.assertEqual(server["cwd"], "/ABSOLUTE/PATH/TO/telegram-search")
+        self.assertEqual(server["cwd"], "/ABSOLUTE/PATH/TO/unofficial-telegram-mcp")
         self.assertTrue(server["required"])
         self.assertEqual(server["startup_timeout_sec"], 30)
         self.assertEqual(server["tool_timeout_sec"], 600)

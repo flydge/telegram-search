@@ -1,7 +1,7 @@
 [mcp_servers.telegram_search]
-command = "/ABSOLUTE/PATH/TO/telegram-search/.venv/bin/telegram-search-mcp"
+command = "/ABSOLUTE/PATH/TO/unofficial-telegram-mcp/.venv/bin/telegram-search-mcp"
 args = []
-cwd = "/ABSOLUTE/PATH/TO/telegram-search"
+cwd = "/ABSOLUTE/PATH/TO/unofficial-telegram-mcp"
 enabled = true
 required = true
 startup_timeout_sec = 30

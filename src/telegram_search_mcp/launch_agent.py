@@ -1,4 +1,4 @@
-"""Safe launchd lifecycle for the single TelegramSearch broker."""
+"""Safe launchd lifecycle for the single Unofficial Telegram MCP broker."""
 
 from __future__ import annotations
 

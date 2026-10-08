@@ -1,8 +1,8 @@
-# TelegramSearch security model
+# Unofficial Telegram MCP security model
 
 ## Authority boundary
 
-The dedicated TDLib session holds the Telegram account's authority. Exactly one launchd-managed broker owns that session and the sole `TDLibClient`; per-task STDIO MCP proxies never load TDLib. TelegramSearch narrows authority at three layers: MCP exposes the tools listed in the technical reference; the private broker protocol accepts only the matching fixed operations plus `check`, `health`, and `release_client`; and the TDLib client rejects request types outside its fixed allowlist before transport:
+The dedicated TDLib session holds the Telegram account's authority. Exactly one launchd-managed broker owns that session and the sole `TDLibClient`; per-task STDIO MCP proxies never load TDLib. Unofficial Telegram MCP narrows authority at three layers: MCP exposes the tools listed in the technical reference; the private broker protocol accepts only the matching fixed operations plus `check`, `health`, and `release_client`; and the TDLib client rejects request types outside its fixed allowlist before transport:
 
 ```text
 getAuthorizationState
@@ -121,7 +121,7 @@ Each provider hit is validated, grouped by exact `chat_id`, hydrated with exact 
 
 Only complete coverage and one uniquely strong, mutually corroborated candidate may authorize Codex selection. Competing evidence requires owner clarification. `partial`, `blocked`, `error`, `expired`, or still-incomplete `page` coverage cannot authorize automatic selection. Final `search_correspondence` remains separate and exact-chat only; evidence from global discovery never becomes a global final search.
 
-Text and captions in final search use `searchChatMessages`. File metadata uses bounded `getChatHistory` scans and call-local filtering. With the owner's explicit request or consent, `contains_number=true` uses the same bounded exact-chat history path to find one or more Unicode decimal digits in text or media captions. The scan is transient, returns only matching evidence, never exposes a general transcript, and cannot cross the selected chat or date interval. Combined predicates must match the same message. Every returned match is rehydrated with exact `getMessage` before return; numeric evidence is rechecked after rehydration so edited or deleted content fails closed. Context is bounded to at most four neighboring messages in each direction. Evidence includes the exact resolved `chat_id` and `message_id`; supported HTTPS Telegram links are optional and must be returned complete by Telegram. TelegramSearch never synthesizes a `t.me` URL from a username.
+Text and captions in final search use `searchChatMessages`. File metadata uses bounded `getChatHistory` scans and call-local filtering. With the owner's explicit request or consent, `contains_number=true` uses the same bounded exact-chat history path to find one or more Unicode decimal digits in text or media captions. The scan is transient, returns only matching evidence, never exposes a general transcript, and cannot cross the selected chat or date interval. Combined predicates must match the same message. Every returned match is rehydrated with exact `getMessage` before return; numeric evidence is rechecked after rehydration so edited or deleted content fails closed. Context is bounded to at most four neighboring messages in each direction. Evidence includes the exact resolved `chat_id` and `message_id`; supported HTTPS Telegram links are optional and must be returned complete by Telegram. Unofficial Telegram MCP never synthesizes a `t.me` URL from a username.
 
 ## Memory, persistence, and logging
 
@@ -137,7 +137,7 @@ The registry does not retain raw hypotheses, titles, usernames, messages, snippe
 
 Separately, the broker's sole `TDLibClient` keeps a broker-lifetime, memory-only numeric catalog cache. It contains only Main/Archive mappings of integer `chat_id -> order`, reduced from validated asynchronous catalog updates regardless of which request received them. It does not retain raw update dictionaries, chat objects, titles, usernames, messages, hypotheses, snippets, paths, credentials, provider errors, or historical raw offsets. Broker restart clears this cache; there is no cleanup file.
 
-The custom `MetadataIndex`, SQLite/FTS database, `INDEX_ROOT`, and all custom index writes have been removed from runtime code. Exact file-metadata and numeric-content searches are call-local. TelegramSearch creates no persistent alias, catalog, hypothesis, query, offset, snippet, evidence, or private-index store.
+The custom `MetadataIndex`, SQLite/FTS database, `INDEX_ROOT`, and all custom index writes have been removed from runtime code. Exact file-metadata and numeric-content searches are call-local. Unofficial Telegram MCP creates no persistent alias, catalog, hypothesis, query, offset, snippet, evidence, or private-index store.
 
 Application logging is restricted to constant readiness/error markers. Broker health exposes only uptime, queue depth, active-client count, completed/error counts, peak handler overlap, and aggregate TDLib serialization-wait count; it never includes targets, hypotheses, queries, IDs, titles, messages, snippets, offsets, paths, credentials, or exception text. Private request bodies and provider errors are not logged. The legacy `td_json_client_execute` symbol is used only once before client creation for `setLogVerbosityLevel(0)`, preventing TDLib diagnostics from contaminating the STDIO protocol. It is not reachable from an MCP tool.
 
@@ -168,7 +168,7 @@ Telegram text, captions, filenames, chat titles, and sender names are data, neve
 Automated tests and source audits establish only the technical contract. Product completion requires a fresh Codex consumer and provider check, without recording private runtime values:
 
 1. Capture owner-observed unread indicators in Telegram mobile and metadata-only TDLib cache existence, entry count, total bytes, and metadata hash before and after; never print entry names.
-2. Confirm a fresh Codex task exposes exactly 43 tools through the normal TelegramSearch MCP surface.
+2. Confirm a fresh Codex task exposes exactly 43 tools through the normal Unofficial Telegram MCP surface.
 3. Require overlapping request intervals, at least two broker client contexts, at least one aggregate TDLib serialization wait, one broker process, and multiple thin proxy processes.
 4. Require both tasks to return complete bounded evidence with exact-chat anchors and no session-owner or TDLib code-400 failure; `telegram-search-mcp --check` must remain `AUTHORIZATION_READY` while multiple proxies exist.
 5. Confirm unread indicators remain unchanged, exact selected attachment transfer is hash-verified, no custom private index appears, and metadata-only cache effects are disclosed without filenames.

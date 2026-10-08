@@ -4,7 +4,7 @@ include .codex/config.toml.example
 include docs/security.md
 include docs/install.md
 include docs/reference.md
-include docs/assets/telegram-search-header.png
+include docs/assets/unofficial-telegram-mcp-header.png
 include skills/telegram-search/SKILL.md
 recursive-include src/telegram_search_mcp *.py
 recursive-include tests *.py

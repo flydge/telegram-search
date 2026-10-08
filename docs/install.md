@@ -1,6 +1,8 @@
-# Installation and configuration
+# Unofficial Telegram MCP: installation and configuration
 
 [← Overview](../README.md) · [Tool reference](reference.md) · [Security](security.md)
+
+**Existing installations:** the product was renamed from TelegramSearch. Keep your current installation folder and MCP configuration. The package, commands, skill identifier and local data paths retain their existing names for compatibility; new checkouts use `unofficial-telegram-mcp`.
 
 ## 1. Prepare the Telegram runtime
 
@@ -25,8 +27,8 @@ A logged-in Telegram Desktop app does **not** supply this TDLib session. If you 
 Use a stable, owner-only checkout. Select a supported Python interpreter if your `python3` is outside the supported range.
 
 ```bash
-git clone https://github.com/flydge/telegram-search.git
-cd telegram-search
+git clone https://github.com/flydge/unofficial-telegram-mcp.git
+cd unofficial-telegram-mcp
 chmod 700 .
 python3 -m venv .venv
 .venv/bin/python -m pip install .
@@ -43,7 +45,7 @@ The check prints `INITIALIZING_TDLIB` followed by `AUTHORIZATION_READY` to stder
 
 ### Codex
 
-Merge the server block from [`.codex/config.toml.example`](../.codex/config.toml.example) into `.codex/config.toml` in the project where you want to use TelegramSearch. Preserve any existing settings. Replace **both** absolute-path placeholders. The example does not expand `~` or shell variables.
+Merge the server block from [`.codex/config.toml.example`](../.codex/config.toml.example) into `.codex/config.toml` in the project where you want to use Unofficial Telegram MCP. Preserve any existing settings. Replace **both** absolute-path placeholders. The example does not expand `~` or shell variables.
 
 The example lists all 43 tools and sets the required timeouts. Start a fresh chat in that project after configuration or schema changes.
 
@@ -55,7 +57,7 @@ Choose a **STDIO** server with:
 
 ```json
 {
-  "command": "/ABSOLUTE/PATH/TO/telegram-search/.venv/bin/telegram-search-mcp",
+  "command": "/ABSOLUTE/PATH/TO/unofficial-telegram-mcp/.venv/bin/telegram-search-mcp",
   "args": []
 }
 ```

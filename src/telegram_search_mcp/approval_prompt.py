@@ -8,7 +8,7 @@ import subprocess
 _SCRIPT = '''on run argv
     set previewText to item 1 of argv
     try
-        set choice to display dialog previewText with title "TelegramSearch — approve send" buttons {"Cancel", "Send"} default button "Cancel" cancel button "Cancel" giving up after 120
+        set choice to display dialog previewText with title "Unofficial Telegram MCP — approve send" buttons {"Cancel", "Send"} default button "Cancel" cancel button "Cancel" giving up after 120
         if (gave up of choice) is false and (button returned of choice) is "Send" then
             return "APPROVED"
         end if
@@ -42,7 +42,7 @@ def confirm_approved_send(
             f"{target.text}\n\nTarget sanitized: {target.sanitized}; truncated: {target.truncated}\n"
             f"Source SHA-256: {target.source_sha256}\nPreview SHA-256: {validated.preview_sha256}\n\n"
             f"{voice}File: {draft.display_name}\nMIME: {draft.mime_type}\nBytes: {draft.size_bytes}\nSHA-256: {draft.sha256}\n"
-            f"Caption:\n{draft.caption}\n\nTelegramSearch will revalidate cached target evidence and make one reply attempt.")
+            f"Caption:\n{draft.caption}\n\nUnofficial Telegram MCP will revalidate cached target evidence and make one reply attempt.")
     elif reply_preview is not None:
         target=reply_preview['reply_target']; draft=reply_preview['draft']; anchor=target['anchor']
         preview=(f"Send this reply to {recipient_title} (chat {recipient})?\n"
@@ -50,11 +50,11 @@ def confirm_approved_send(
             f"{target['text']}\n\nTarget sanitized: {target['sanitized']}; truncated: {target['truncated']}\n"
             f"Source SHA-256: {target['source_sha256']}\nPreview SHA-256: {reply_preview['preview_sha256']}\n\n"
             f"Reply text:\n{text}\n\nText SHA-256: {sha256}\n\n"
-            "TelegramSearch will revalidate cached target evidence and make one reply attempt.")
+            "Unofficial Telegram MCP will revalidate cached target evidence and make one reply attempt.")
     elif kind == "text":
         preview = (f"Send this text to {recipient_title} (chat {recipient})?\n\n"
                    f"{text}\n\nSHA-256: {sha256}\n\n"
-                   "TelegramSearch will make one send attempt.")
+                   "Unofficial Telegram MCP will make one send attempt.")
     else:
         voice_detail = (f"Source: {source_display_name}\nSource SHA-256: {source_sha256}\n"
                         f"Duration: {duration_seconds} seconds\nConverted to OGG/Opus mono\n"
@@ -64,7 +64,7 @@ def confirm_approved_send(
             f"{voice_detail}"
             f"File: {display_name}\nBytes: {size_bytes}\nSHA-256: {sha256}\n"
             f"Caption: {caption or '(none)'}\n\n"
-            "TelegramSearch will make one upload/send attempt."
+            "Unofficial Telegram MCP will make one upload/send attempt."
         )
     try:
         result = subprocess.run(
