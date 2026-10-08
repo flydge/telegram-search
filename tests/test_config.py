@@ -1,28 +1,29 @@
 from __future__ import annotations
 
 import os
+import runpy
 import stat
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
-from telegram_search_mcp import config
 from telegram_search_mcp.config import ConfigurationError, ensure_private_directory
+from telegram_search_mcp import config
 
 
-class PortableRuntimeTests(unittest.TestCase):
-    def test_runtime_paths_follow_the_installing_users_home(self) -> None:
-        root, keychain_service, agent_label, agent_plist = config._owner_paths(
-            Path("/fixture/account")
-        )
+class OwnerPathsTests(unittest.TestCase):
+    def test_runtime_paths_follow_the_current_owner_home(self) -> None:
+        # An invented home verifies that another account cannot use author storage.
+        with patch.object(Path, "home", return_value=Path("/fixture-home/sample-owner")):
+            paths = runpy.run_path(config.__file__)
+        self.assertEqual(paths["APP_SUPPORT_ROOT"], Path("/fixture-home/sample-owner/Library/Application Support/TelegramSearchMCP"))
+        self.assertEqual(paths["TDLIB_SESSION_DIRECTORY"], Path("/fixture-home/sample-owner/Library/Application Support/TelegramSearchMCP/tdlib"))
+        self.assertEqual(paths["BROKER_SOCKET_PATH"], Path("/fixture-home/sample-owner/Library/Application Support/TelegramSearchMCP/run/broker.sock"))
+        self.assertEqual(paths["KEYCHAIN_SERVICE"], "com.sample-owner.telegram-search-mcp")
+        self.assertEqual(paths["LAUNCH_AGENT_LABEL"], "com.sample-owner.telegram-search-mcp.broker")
+        self.assertEqual(paths["LAUNCH_AGENT_PLIST"], Path("/fixture-home/sample-owner/Library/LaunchAgents/com.sample-owner.telegram-search-mcp.broker.plist"))
 
-        self.assertEqual(root, Path("/fixture/account/Library/Application Support/TelegramSearchMCP"))
-        self.assertEqual(keychain_service, "com.account.telegram-search-mcp")
-        self.assertEqual(agent_label, "com.account.telegram-search-mcp.broker")
-        self.assertEqual(
-            agent_plist,
-            Path("/fixture/account/Library/LaunchAgents/com.account.telegram-search-mcp.broker.plist"),
-        )
 
 
 class PrivateDirectoryTests(unittest.TestCase):

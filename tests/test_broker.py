@@ -44,6 +44,10 @@ class SerializedFakeTDLib:
         self.serialization_wait_count = 0
         self.closed = 0
 
+    @contextlib.contextmanager
+    def request_budget(self, deadline: float):
+        yield
+
     def _raw_call(self) -> None:
         acquired = self._raw_lock.acquire(blocking=False)
         if not acquired:
@@ -117,6 +121,38 @@ class SerializedFakeTDLib:
 
 
 class BrokerWalkingSkeletonTests(unittest.IsolatedAsyncioTestCase):
+    def test_search_envelope_deadline_covers_provider_work(self) -> None:
+        broker_module = importlib.import_module("telegram_search_mcp.broker")
+
+        class BudgetAwareBackend(SerializedFakeTDLib):
+            active_deadline = None
+            observed_deadline = None
+
+            @contextlib.contextmanager
+            def request_budget(self, deadline):
+                self.active_deadline = deadline
+                try:
+                    yield
+                finally:
+                    self.active_deadline = None
+
+            def ensure_ready(self):
+                if self.active_deadline is None:
+                    raise TDLibError("search ran outside its request budget")
+                self.observed_deadline = self.active_deadline
+
+        backend = BudgetAwareBackend()
+        with tempfile.TemporaryDirectory() as parent:
+            broker = broker_module.Broker(socket_path=Path(parent) / "broker.sock",
+                                           client_factory=lambda: backend)
+            deadline = time.monotonic() + 10
+            result = broker._dispatch({"operation": "search", "client_id": "test",
+                "payload": {"target": -1001, "query": {"text": "video"}},
+                "deadline": deadline, "broker_generation": broker._generation})
+        self.assertEqual(result["status"], "no_match")
+        self.assertEqual(backend.observed_deadline, deadline)
+        self.assertIsNone(backend.active_deadline)
+
     def test_subprocess_proxies_share_one_fake_tdlib_broker(self) -> None:
         broker_script = r'''
 import signal
@@ -299,6 +335,45 @@ client.close()
             "resolve_target",
             "discover_targets",
             "search_correspondence",
+            "get_attachment",
+            "get_message_context",
+            "read_attachment",
+            "analyze_media",
+            "create_local_artifact",
+            "begin_local_upload",
+            "append_local_upload",
+            "finish_local_upload",
+            "prepare_text_send",
+            "send_prepared_text",
+            "prepare_artifact_send",
+            "send_prepared_artifact",
+            "read_messages",
+            "read_history",
+            "read_reply_chain",
+            "list_topics",
+            "read_topic_history",
+            "search_messages",
+            "list_chats",
+            "search_chats",
+            "verify_target",
+            "read_target_messages",
+            "read_attachment_page",
+            "read_spreadsheet",
+            "read_presentation",
+            "prepare_reply_artifact_send",
+            "get_reply_artifact_draft",
+            "update_reply_artifact_draft",
+            "refresh_reply_artifact_draft",
+            "prepare_reply_text_send",
+            "get_reply_draft",
+            "update_reply_draft",
+            "refresh_reply_draft",
+            "list_drafts",
+            "get_send_status",
+            "get_draft",
+            "cancel_draft",
+            "update_draft",
+            "refresh_draft",
         ]
         self.assertEqual([tool.name for tool in first_tools.tools], expected_tools)
         self.assertEqual([tool.name for tool in second_tools.tools], expected_tools)
@@ -539,8 +614,9 @@ client.close()
                     "version": PROTOCOL_VERSION,
                     "client_id": "client_abcdefghijklmnopqrstuvwxyz012345",
                     "request_id": "request_abcdefghijklmnopqrstuvwxyz012345",
-                    "operation": "resolve",
-                    "payload": {"target": "@known_chat"},
+                    "operation": "handshake",
+                    "payload": broker._contract,
+                    "broker_generation": None,
                     "deadline": time.monotonic() - 1,
                 },
                 max_bytes=MAX_REQUEST_BYTES,
@@ -577,8 +653,9 @@ client.close()
                     "version": PROTOCOL_VERSION,
                     "client_id": "client_abcdefghijklmnopqrstuvwxyz012345",
                     "request_id": "request_abcdefghijklmnopqrstuvwxyz012345",
-                    "operation": "resolve",
-                    "payload": {"target": "@known_chat"},
+                    "operation": "handshake",
+                    "payload": broker._contract,
+                    "broker_generation": None,
                     "deadline": time.monotonic() + 571,
                 },
                 max_bytes=MAX_REQUEST_BYTES,

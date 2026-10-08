@@ -1,9 +1,22 @@
 [mcp_servers.telegram_search]
-command = "/ABSOLUTE/PATH/TO/REPO/.venv/bin/telegram-search-mcp"
+command = "/ABSOLUTE/PATH/TO/telegram-search/.venv/bin/telegram-search-mcp"
 args = []
-cwd = "/ABSOLUTE/PATH/TO/REPO"
+cwd = "/ABSOLUTE/PATH/TO/telegram-search"
 enabled = true
 required = true
 startup_timeout_sec = 30
 tool_timeout_sec = 600
-enabled_tools = ["_manifest", "resolve_target", "discover_targets", "search_correspondence"]
+enabled_tools = ["_manifest", "resolve_target", "discover_targets", "search_correspondence", "get_attachment", "get_message_context", "read_attachment", "analyze_media", "create_local_artifact", "begin_local_upload", "append_local_upload", "finish_local_upload", "prepare_reply_artifact_send", "get_reply_artifact_draft", "update_reply_artifact_draft", "refresh_reply_artifact_draft", "prepare_reply_text_send", "get_reply_draft", "update_reply_draft", "refresh_reply_draft", "prepare_text_send", "send_prepared_text", "prepare_artifact_send", "send_prepared_artifact", "read_messages", "read_history", "read_reply_chain", "list_topics", "read_topic_history", "search_messages", "list_chats", "search_chats", "verify_target", "read_target_messages", "read_attachment_page", "read_spreadsheet", "read_presentation", "list_drafts", "get_draft", "get_send_status", "cancel_draft", "update_draft", "refresh_draft"]
+
+# Trusted broker runtime policy is configured separately, not by enabled_tools.
+# Bounded media reply targets additionally need reply_media_targets alongside
+# send and reply_text_send or reply_artifact_send; legacy defaults omit it.
+# Mention/MentionName text reply sources additionally need both default-off
+# reply_formatted_targets and reply_identity_targets in that trusted policy.
+# Mixed lexical entities also need reply_lexical_targets. Identity media captions
+# also require reply_media_targets on supported document/static-photo/voice sources.
+# DateTime messageText sources need both default-off reply_formatted_targets and
+# reply_datetime_targets, adding lexical/identity capabilities when present.
+# Only signed int32 unix_time with absent/null formatting_type is supported;
+# all DateTime overlaps, non-null formats and DateTime captions are unsupported.
+# enabled_tools never grants source or send authority.

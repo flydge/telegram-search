@@ -1,0 +1,443 @@
+[
+  {
+    "is_media": false,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"@type\":\"messageText\",\"link_preview\":null,\"link_preview_options\":null,\"text\":{\"@type\":\"formattedText\",\"entities\":[],\"text\":\"plain\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":1}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageText",
+        "text": {
+          "@type": "formattedText",
+          "entities": [],
+          "text": "plain"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "d31511a2ae94facfbeb165d734171f2307ed22fcc2f17e60e4b6794d3743baed",
+      "text": "[untrusted Telegram evidence] plain",
+      "truncated": false
+    },
+    "version": 1
+  },
+  {
+    "is_media": true,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"caption\":{\"@type\":\"formattedText\",\"entities\":[],\"text\":\"Caption\"},\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":2}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageDocument",
+        "caption": {
+          "@type": "formattedText",
+          "entities": [],
+          "text": "Caption"
+        },
+        "document": {
+          "@type": "document",
+          "document": {
+            "@type": "file",
+            "expected_size": 10,
+            "id": 1,
+            "local": {
+              "@type": "localFile",
+              "can_be_deleted": false,
+              "can_be_downloaded": true,
+              "download_offset": 0,
+              "downloaded_prefix_size": 0,
+              "downloaded_size": 0,
+              "is_downloading_active": false,
+              "is_downloading_completed": false,
+              "path": ""
+            },
+            "remote": {
+              "@type": "remoteFile",
+              "id": "remote",
+              "is_uploading_active": false,
+              "is_uploading_completed": true,
+              "unique_id": "unique",
+              "uploaded_size": 10
+            },
+            "size": 10
+          },
+          "file_name": "evidence.txt",
+          "mime_type": "text/plain"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_media_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "62e9f0f689b7d65ee3a89110e83b31cc7bf10c678a96388769e53c1ee00ba083",
+      "text": "[untrusted Telegram evidence] Media target: {\"caption\":\"Caption\",\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}}",
+      "truncated": false
+    },
+    "version": 2
+  },
+  {
+    "is_media": false,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"@type\":\"messageText\",\"link_preview\":null,\"link_preview_options\":null,\"text\":{\"@type\":\"formattedText\",\"entities\":[{\"@type\":\"textEntity\",\"length\":3,\"offset\":0,\"type\":{\"@type\":\"textEntityTypeBold\"}}],\"text\":\"abc\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":3}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageText",
+        "text": {
+          "@type": "formattedText",
+          "entities": [
+            {
+              "@type": "textEntity",
+              "length": 3,
+              "offset": 0,
+              "type": {
+                "@type": "textEntityTypeBold"
+              }
+            }
+          ],
+          "text": "abc"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_formatted_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "1ec8fa35e173147e4c5cf1e8c8937e83de27d8fd20c50ab6d26c116f44ac5f0b",
+      "text": "[untrusted Telegram evidence] Formatted target: {\"entities\":[{\"length\":3,\"offset\":0,\"text\":\"abc\",\"type\":\"bold\"}],\"offset_basis\":\"original source UTF-16 code units\",\"text\":\"abc\"}",
+      "truncated": false
+    },
+    "version": 3
+  },
+  {
+    "is_media": true,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"caption\":{\"@type\":\"formattedText\",\"entities\":[{\"@type\":\"textEntity\",\"length\":3,\"offset\":0,\"type\":{\"@type\":\"textEntityTypeItalic\"}}],\"text\":\"abc\"},\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":4}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageDocument",
+        "caption": {
+          "@type": "formattedText",
+          "entities": [
+            {
+              "@type": "textEntity",
+              "length": 3,
+              "offset": 0,
+              "type": {
+                "@type": "textEntityTypeItalic"
+              }
+            }
+          ],
+          "text": "abc"
+        },
+        "document": {
+          "@type": "document",
+          "document": {
+            "@type": "file",
+            "expected_size": 10,
+            "id": 1,
+            "local": {
+              "@type": "localFile",
+              "can_be_deleted": false,
+              "can_be_downloaded": true,
+              "download_offset": 0,
+              "downloaded_prefix_size": 0,
+              "downloaded_size": 0,
+              "is_downloading_active": false,
+              "is_downloading_completed": false,
+              "path": ""
+            },
+            "remote": {
+              "@type": "remoteFile",
+              "id": "remote",
+              "is_uploading_active": false,
+              "is_uploading_completed": true,
+              "unique_id": "unique",
+              "uploaded_size": 10
+            },
+            "size": 10
+          },
+          "file_name": "evidence.txt",
+          "mime_type": "text/plain"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_media_targets",
+      "reply_formatted_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "23f05694128a418242a3d8b8047b336df7e35a15a8fa4fdee9b0fae39c99fab6",
+      "text": "[untrusted Telegram evidence] Media target: {\"caption\":{\"entities\":[{\"length\":3,\"offset\":0,\"text\":\"abc\",\"type\":\"italic\"}],\"offset_basis\":\"original source UTF-16 code units\",\"text\":\"abc\"},\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}}",
+      "truncated": false
+    },
+    "version": 4
+  },
+  {
+    "is_media": false,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"@type\":\"messageText\",\"link_preview\":null,\"link_preview_options\":null,\"text\":{\"@type\":\"formattedText\",\"entities\":[{\"@type\":\"textEntity\",\"length\":4,\"offset\":0,\"type\":{\"@type\":\"textEntityTypeHashtag\"}}],\"text\":\"#tag\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":5}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageText",
+        "text": {
+          "@type": "formattedText",
+          "entities": [
+            {
+              "@type": "textEntity",
+              "length": 4,
+              "offset": 0,
+              "type": {
+                "@type": "textEntityTypeHashtag"
+              }
+            }
+          ],
+          "text": "#tag"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_formatted_targets",
+      "reply_lexical_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "9a800cfbde1178221c06bc2bb203405c2203f36feb87c84ef9e9e55481a34307",
+      "text": "[untrusted Telegram evidence] Formatted target: {\"entities\":[{\"length\":4,\"offset\":0,\"text\":\"#tag\",\"type\":\"hashtag\"}],\"offset_basis\":\"original source UTF-16 code units\",\"text\":\"#tag\"}",
+      "truncated": false
+    },
+    "version": 5
+  },
+  {
+    "is_media": true,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"caption\":{\"@type\":\"formattedText\",\"entities\":[{\"@type\":\"textEntity\",\"length\":4,\"offset\":0,\"type\":{\"@type\":\"textEntityTypeHashtag\"}}],\"text\":\"#tag\"},\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":6}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageDocument",
+        "caption": {
+          "@type": "formattedText",
+          "entities": [
+            {
+              "@type": "textEntity",
+              "length": 4,
+              "offset": 0,
+              "type": {
+                "@type": "textEntityTypeHashtag"
+              }
+            }
+          ],
+          "text": "#tag"
+        },
+        "document": {
+          "@type": "document",
+          "document": {
+            "@type": "file",
+            "expected_size": 10,
+            "id": 1,
+            "local": {
+              "@type": "localFile",
+              "can_be_deleted": false,
+              "can_be_downloaded": true,
+              "download_offset": 0,
+              "downloaded_prefix_size": 0,
+              "downloaded_size": 0,
+              "is_downloading_active": false,
+              "is_downloading_completed": false,
+              "path": ""
+            },
+            "remote": {
+              "@type": "remoteFile",
+              "id": "remote",
+              "is_uploading_active": false,
+              "is_uploading_completed": true,
+              "unique_id": "unique",
+              "uploaded_size": 10
+            },
+            "size": 10
+          },
+          "file_name": "evidence.txt",
+          "mime_type": "text/plain"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_media_targets",
+      "reply_formatted_targets",
+      "reply_lexical_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "fafc3e4c64de1d38aff7c7c39a9c46250ff90a506fb8fc9fd9a746a85e5a5a77",
+      "text": "[untrusted Telegram evidence] Media target: {\"caption\":{\"entities\":[{\"length\":4,\"offset\":0,\"text\":\"#tag\",\"type\":\"hashtag\"}],\"offset_basis\":\"original source UTF-16 code units\",\"text\":\"#tag\"},\"kind\":\"document\",\"media\":{\"file_name\":\"evidence.txt\",\"mime_type\":\"text/plain\",\"size\":10,\"unique_id_sha256\":\"c2720445a45267813688ff73fa188aa060c1b661aefaf1650d42f690697b5ab3\"}}",
+      "truncated": false
+    },
+    "version": 6
+  },
+  {
+    "is_media": false,
+    "projection_json": "{\"anchor\":{\"chat_id\":123,\"message_id\":55},\"message\":{\"@type\":\"message\",\"auto_delete_in\":0.0,\"chat_id\":123,\"content\":{\"@type\":\"messageText\",\"link_preview\":null,\"link_preview_options\":null,\"text\":{\"@type\":\"formattedText\",\"entities\":[{\"@type\":\"textEntity\",\"length\":4,\"offset\":3,\"type\":{\"@type\":\"textEntityTypeMention\"}},{\"@type\":\"textEntity\",\"length\":3,\"offset\":8,\"type\":{\"@type\":\"textEntityTypeMentionName\",\"user_id\":42}}],\"text\":\"😀 @ada Ada #tag\"}},\"date\":1700000000,\"edit_date\":0,\"ephemeral_content\":null,\"ephemeral_message_id\":0,\"forward_info\":null,\"id\":55,\"import_info\":null,\"is_from_offline\":false,\"is_outgoing\":false,\"receiver_id\":null,\"reply_markup\":null,\"reply_to\":null,\"scheduling_state\":null,\"self_destruct_in\":0.0,\"self_destruct_type\":null,\"sender_id\":{\"@type\":\"messageSenderUser\",\"user_id\":8},\"sending_state\":null,\"topic_id\":null},\"version\":7}",
+    "raw": {
+      "@type": "message",
+      "auto_delete_in": 0.0,
+      "chat_id": 123,
+      "content": {
+        "@type": "messageText",
+        "text": {
+          "@type": "formattedText",
+          "entities": [
+            {
+              "@type": "textEntity",
+              "length": 4,
+              "offset": 3,
+              "type": {
+                "@type": "textEntityTypeMention"
+              }
+            },
+            {
+              "@type": "textEntity",
+              "length": 3,
+              "offset": 8,
+              "type": {
+                "@type": "textEntityTypeMentionName",
+                "user_id": 42
+              }
+            }
+          ],
+          "text": "😀 @ada Ada #tag"
+        }
+      },
+      "date": 1700000000,
+      "edit_date": 0,
+      "ephemeral_message_id": 0,
+      "id": 55,
+      "is_from_offline": false,
+      "is_outgoing": false,
+      "self_destruct_in": 0.0,
+      "sender_id": {
+        "@type": "messageSenderUser",
+        "user_id": 8
+      }
+    },
+    "required_capabilities": [
+      "reply_formatted_targets",
+      "reply_identity_targets"
+    ],
+    "target": {
+      "anchor": {
+        "chat_id": 123,
+        "message_id": 55
+      },
+      "sanitized": false,
+      "source_sha256": "f72c87fab196d34555366b55b92a5842b595734574f67a1926f1ae476fc31631",
+      "text": "[untrusted Telegram evidence] Formatted target: {\"entities\":[{\"length\":4,\"offset\":3,\"text\":\"@ada\",\"type\":\"mention\"},{\"length\":3,\"offset\":8,\"text\":\"Ada\",\"type\":\"mention_name\",\"user_id\":42}],\"offset_basis\":\"original source UTF-16 code units\",\"text\":\"😀 @ada Ada #tag\"}",
+      "truncated": false
+    },
+    "version": 7
+  }
+]

@@ -17,6 +17,39 @@ from telegram_search_mcp.config import LAUNCH_AGENT_LABEL
 
 
 class LaunchAgentTests(unittest.TestCase):
+    def test_install_waits_for_old_service_retirement_before_bootstrap(self) -> None:
+        launch_agent = importlib.import_module("telegram_search_mcp.launch_agent")
+        checks = 0
+        actions = []
+
+        def runner(arguments, **kwargs):
+            nonlocal checks
+            action = arguments[1]
+            actions.append(action)
+            if action == "print":
+                checks += 1
+                return subprocess.CompletedProcess(arguments, 113 if checks >= 3 else 0, "", "")
+            if action == "bootstrap" and checks < 3:
+                return subprocess.CompletedProcess(arguments, 5, "", "service still retiring")
+            return subprocess.CompletedProcess(arguments, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as directory, patch("time.sleep"):
+            launch_agent.install_launch_agent(plist_path=Path(directory) / "broker.plist", runner=runner, preflight=lambda: None)
+        self.assertEqual(actions, ["bootout", "print", "print", "print", "bootstrap"])
+
+    def test_install_does_not_bootstrap_when_previous_service_never_retires(self) -> None:
+        launch_agent = importlib.import_module("telegram_search_mcp.launch_agent")
+        actions = []
+
+        def runner(arguments, **kwargs):
+            actions.append(arguments[1])
+            return subprocess.CompletedProcess(arguments, 0, "", "")
+
+        with tempfile.TemporaryDirectory() as directory, patch("time.sleep"):
+            with self.assertRaises(launch_agent.LaunchAgentError):
+                launch_agent.install_launch_agent(plist_path=Path(directory) / "broker.plist", runner=runner, preflight=lambda: None)
+        self.assertNotIn("bootstrap", actions)
+
     def test_pyproject_exposes_the_broker_lifecycle_command(self) -> None:
         repository = Path(__file__).resolve().parents[1]
         with (repository / "pyproject.toml").open("rb") as stream:
@@ -113,16 +146,10 @@ class LaunchAgentTests(unittest.TestCase):
         launch_agent = importlib.import_module("telegram_search_mcp.launch_agent")
         calls: list[list[str]] = []
         preflights: list[str] = []
-        print_results = iter((0, 113))
 
         def runner(arguments: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
             calls.append(arguments)
-            return subprocess.CompletedProcess(
-                arguments,
-                next(print_results, 113) if arguments[1] == "print" else 0,
-                "",
-                "",
-            )
+            return subprocess.CompletedProcess(arguments, 113 if arguments[1] == "print" else 0, "", "")
 
         with tempfile.TemporaryDirectory() as parent:
             plist_path = Path(parent) / "broker.plist"
@@ -140,39 +167,9 @@ class LaunchAgentTests(unittest.TestCase):
             [
                 ["/bin/launchctl", "bootout", f"gui/501/{LAUNCH_AGENT_LABEL}"],
                 ["/bin/launchctl", "print", f"gui/501/{LAUNCH_AGENT_LABEL}"],
-                ["/bin/launchctl", "print", f"gui/501/{LAUNCH_AGENT_LABEL}"],
                 ["/bin/launchctl", "bootstrap", "gui/501", str(plist_path)],
-                [
-                    "/bin/launchctl",
-                    "kickstart",
-                    "-k",
-                    f"gui/501/{LAUNCH_AGENT_LABEL}",
-                ],
             ],
         )
-
-    def test_install_stops_before_bootstrap_when_old_service_never_exits(self) -> None:
-        launch_agent = importlib.import_module("telegram_search_mcp.launch_agent")
-        operations: list[str] = []
-
-        def runner(arguments: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[str]:
-            operations.append(arguments[1])
-            return subprocess.CompletedProcess(arguments, 0, "", "")
-
-        with tempfile.TemporaryDirectory() as parent, patch("time.sleep", return_value=None):
-            with self.assertRaises(launch_agent.LaunchAgentError):
-                launch_agent.install_launch_agent(
-                    plist_path=Path(parent) / "broker.plist",
-                    python_executable=Path(sys.executable),
-                    runner=runner,
-                    preflight=lambda: None,
-                    uid=501,
-                )
-
-        self.assertEqual(operations[0], "bootout")
-        self.assertIn("print", operations)
-        self.assertNotIn("bootstrap", operations)
-        self.assertNotIn("kickstart", operations)
 
     def test_existing_symlink_plist_is_rejected_without_touching_target(self) -> None:
         launch_agent = importlib.import_module("telegram_search_mcp.launch_agent")

@@ -22,8 +22,11 @@ from telegram_search_mcp.tdjson import (
     ForbiddenTDLibRequest,
     LegacyTDJson,
     SecretChatRejected,
+    TDLibDeadlineExceeded,
     TDLibError,
     TDLibClient,
+    DownloadTooLarge,
+    MessageSendFailed,
 )
 
 
@@ -108,6 +111,226 @@ def positioned_chat(chat_id: int, chat_list: str, order: object) -> dict[str, An
 
 
 class TDLibBoundaryTests(unittest.TestCase):
+    def test_send_failure_keeps_only_provider_code_without_retry(self) -> None:
+        class FailingRaw:
+            def __init__(self, delayed: bool) -> None:
+                self.delayed = delayed
+                self.sent: list[dict[str, Any]] = []
+                self.pending: deque[dict[str, Any]] = deque()
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+                error = {"@type": "error", "code": 400, "message": "FILE_PARTS_INVALID"}
+                if self.delayed:
+                    self.pending.extend([
+                        {"@type": "message", "id": -9, "chat_id": 123, "is_outgoing": True,
+                         "content": {"@type": "messageDocument"}, "sending_state": {"@type": "messageSendingStatePending", "sending_id": payload["options"]["sending_id"]}, "@extra": payload["@extra"]},
+                        {"@type": "updateMessageSendFailed", "old_message_id": -9, "error": error,
+                         "message": {"@type":"message", "id": 9, "chat_id":123, "is_outgoing":True,
+                            "content":{"@type":"messageDocument"}, "sending_state":{"@type":"messageSendingStateFailed","error":error}}},
+                    ])
+                else:
+                    self.pending.append({**error, "@extra": payload["@extra"]})
+
+            def receive(self, timeout: float) -> dict[str, Any] | None:
+                return self.pending.popleft() if self.pending else None
+
+        path = Path.home() / "Library/Application Support/TelegramSearchMCP/outgoing-staging/draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/report.txt"
+        for delayed in (False, True):
+            with self.subTest(delayed=delayed):
+                raw = FailingRaw(delayed)
+                client = TDLibClient(raw=raw)
+                client._ready = True
+                with self.assertRaises(MessageSendFailed) as raised:
+                    client.send_document_message(123, path, "")
+                self.assertEqual(raised.exception.public_detail(),
+                                 "TDLib rejected the send (code 400)")
+                self.assertEqual(len(raw.sent), 1)
+        self.assertEqual(MessageSendFailed("failed", provider_error={"code": 406, "message": "secret"}).public_detail(),
+                         "TDLib rejected the send (code 406)")
+        self.assertEqual(MessageSendFailed("failed", provider_error={"code": 400, "message": "/private/path"}).public_detail(),
+                         "TDLib rejected the send (code 400)")
+
+    def test_voice_note_send_uses_opus_payload_and_checks_final_type(self) -> None:
+        class VoiceRaw:
+            def __init__(self) -> None:
+                self.sent: list[dict[str, Any]] = []
+                self.pending: deque[dict[str, Any]] = deque()
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+                self.pending.extend([
+                    {"@type": "message", "id": -3, "chat_id": 123, "is_outgoing": True,
+                     "content": {"@type": "messageVoiceNote"}, "sending_state": {"@type": "messageSendingStatePending", "sending_id": payload["options"]["sending_id"]}, "@extra": payload["@extra"]},
+                    {"@type": "updateMessageSendSucceeded", "old_message_id": -3,
+                     "message": {"@type": "message", "id": 901, "chat_id": 123,
+                                 "is_outgoing": True, "content": {"@type": "messageVoiceNote"}}},
+                ])
+
+            def receive(self, timeout: float) -> dict[str, Any] | None:
+                return self.pending.popleft() if self.pending else None
+
+        raw = VoiceRaw()
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        path = Path.home() / "Library/Application Support/TelegramSearchMCP/outgoing-staging/draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/speech.ogg"
+        waveform = "A" * 84
+        self.assertEqual(client.send_voice_note_message(123, path, "", 1, waveform), 901)
+        self.assertEqual(len(raw.sent), 1)
+        self.assertEqual(raw.sent[0]["input_message_content"]["@type"], "inputMessageVoiceNote")
+        self.assertEqual(raw.sent[0]["input_message_content"]["voice_note"]["voice_note"]["path"], str(path))
+
+    def test_photo_send_uses_input_message_photo_and_checks_final_type(self) -> None:
+        class PhotoRaw:
+            def __init__(self) -> None:
+                self.sent: list[dict[str, Any]] = []
+                self.pending: deque[dict[str, Any]] = deque()
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+                self.pending.extend([
+                    {"@type": "message", "id": -4, "chat_id": 123, "is_outgoing": True,
+                     "content": {"@type": "messagePhoto"}, "sending_state": {"@type": "messageSendingStatePending", "sending_id": payload["options"]["sending_id"]}, "@extra": payload["@extra"]},
+                    {"@type": "updateMessageSendSucceeded", "old_message_id": -4,
+                     "message": {"@type": "message", "id": 811, "chat_id": 123,
+                                 "is_outgoing": True, "content": {"@type": "messagePhoto"}}},
+                ])
+
+            def receive(self, timeout: float) -> dict[str, Any] | None:
+                return self.pending.popleft() if self.pending else None
+
+        raw = PhotoRaw()
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        path = Path.home() / "Library/Application Support/TelegramSearchMCP/outgoing-staging/draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/picture.png"
+        self.assertEqual(client.send_photo_message(123, path, "Picture"), 811)
+        self.assertEqual(len(raw.sent), 1)
+        self.assertEqual(raw.sent[0]["input_message_content"]["@type"], "inputMessagePhoto")
+        self.assertEqual(raw.sent[0]["input_message_content"]["photo"]["photo"]["path"], str(path))
+
+    def test_text_send_requires_matching_final_text_and_single_attempt(self) -> None:
+        class TextRaw:
+            def __init__(self, final_text: str) -> None:
+                self.final_text = final_text
+                self.sent: list[dict[str, Any]] = []
+                self.pending: deque[dict[str, Any]] = deque()
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+                self.pending.extend([
+                    {"@type": "message", "id": -7, "chat_id": 123, "is_outgoing": True,
+                     "content": {"@type": "messageText", "text": {"@type": "formattedText", "text": "Hello", "entities": []}},
+                     "sending_state": {"@type": "messageSendingStatePending", "sending_id": payload["options"]["sending_id"]}, "@extra": payload["@extra"]},
+                    {"@type": "updateMessageSendSucceeded", "old_message_id": -7,
+                     "message": {"@type": "message", "id": 701, "chat_id": 123, "is_outgoing": True,
+                                 "content": {"@type": "messageText", "text": {"@type": "formattedText", "text": self.final_text, "entities": []}}}},
+                ])
+
+            def receive(self, timeout: float) -> dict[str, Any] | None:
+                return self.pending.popleft() if self.pending else None
+
+        raw = TextRaw("Hello")
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        self.assertEqual(client.send_text_message(123, "Hello"), 701)
+        self.assertEqual(len(raw.sent), 1)
+        self.assertEqual(raw.sent[0]["input_message_content"], {
+            "@type": "inputMessageText", "text": {"@type": "formattedText", "text": "Hello", "entities": []},
+            "link_preview_options": {"@type": "linkPreviewOptions", "is_disabled": True, "url": "",
+                                     "force_small_media": False, "force_large_media": False,
+                                     "show_above_text": False}, "clear_draft": False,
+        })
+        changed = TextRaw("Changed")
+        client = TDLibClient(raw=changed)
+        client._ready = True
+        with self.assertRaises(Exception):
+            client.send_text_message(123, "Hello")
+        self.assertEqual(len(changed.sent), 1)
+
+    def test_send_document_uses_one_attempt_and_waits_for_matching_success(self) -> None:
+        class SendRaw:
+            def __init__(self) -> None:
+                self.sent: list[dict[str, Any]] = []
+                self.pending: deque[dict[str, Any]] = deque()
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+                chat_id = payload["chat_id"]
+                self.pending.extend([
+                    {"@type": "message", "id": -99, "chat_id": chat_id,
+                     "is_outgoing": True, "content": {"@type": "messageDocument"},
+                     "sending_state": {"@type": "messageSendingStatePending", "sending_id": payload["options"]["sending_id"]}, "@extra": payload["@extra"]},
+                    {"@type": "updateMessageSendSucceeded", "old_message_id": -99,
+                     "message": {"@type": "message", "id": 200, "chat_id": chat_id,
+                                 "is_outgoing": True, "content": {"@type": "messageDocument"}}},
+                ])
+
+            def receive(self, timeout: float) -> dict[str, Any] | None:
+                del timeout
+                return self.pending.popleft() if self.pending else None
+
+            def close(self) -> None:
+                pass
+
+        raw = SendRaw()
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        path = Path.home() / "Library/Application Support/TelegramSearchMCP/outgoing-staging/draft_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/report.txt"
+        message_id = client.send_document_message(123, path, "reviewed")
+        self.assertEqual(message_id, 200)
+        self.assertEqual(len(raw.sent), 1)
+        content = raw.sent[0]["input_message_content"]
+        self.assertEqual(content["document"]["document"]["path"], str(path))
+        self.assertEqual(content["caption"]["text"], "reviewed")
+
+    def test_download_file_polls_without_holding_provider_lock_and_returns_completed_path(self) -> None:
+        raw = ScriptedRaw({
+            "downloadFile": [{"@type": "file", "id": 44, "local": {"is_downloading_completed": False, "path": ""}}],
+            "getFile": [
+                {"@type": "file", "id": 44, "local": {"is_downloading_completed": False, "path": ""}},
+                {"@type": "file", "id": 44, "local": {"is_downloading_completed": True, "path": "/tmp/synthetic-file"}},
+            ],
+        })
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        path = client.download_file(44, timeout=2, poll_seconds=0)
+
+        self.assertEqual(path, Path("/tmp/synthetic-file"))
+        self.assertEqual([item["@type"] for item in raw.sent], ["downloadFile", "getFile", "getFile"])
+        self.assertEqual(raw.sent[0]["synchronous"], False)
+
+    def test_download_file_cancels_own_unfinished_request_on_deadline(self) -> None:
+        raw = ScriptedRaw({
+            "downloadFile": [{"@type": "file", "id": 44, "local": {"is_downloading_completed": False, "path": ""}}],
+            "getFile": [{"@type": "file", "id": 44, "local": {"is_downloading_completed": False, "path": ""}}],
+            "cancelDownloadFile": [{"@type": "ok"}],
+        })
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        with self.assertRaises(TimeoutError):
+            client.download_file(44, timeout=0, poll_seconds=0)
+
+        self.assertEqual([item["@type"] for item in raw.sent], ["downloadFile", "cancelDownloadFile"])
+        self.assertEqual(raw.sent[-1]["only_if_pending"], False)
+
+    def test_download_file_caps_unknown_size_before_network_transfer(self) -> None:
+        max_bytes = 64 * 1024 * 1024
+        raw = ScriptedRaw({
+            "downloadFile": [{"@type": "file", "id": 44, "size": 0,
+                              "local": {"is_downloading_completed": False, "downloaded_size": max_bytes + 1, "path": ""}}],
+            "cancelDownloadFile": [{"@type": "ok"}],
+        })
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        with self.assertRaises(DownloadTooLarge):
+            client.download_file(44, max_bytes=max_bytes)
+
+        self.assertEqual(raw.sent[0]["limit"], max_bytes + 1)
+        self.assertEqual(raw.sent[-1]["@type"], "cancelDownloadFile")
+
     def test_serialization_wait_counter_records_contention_without_payloads(self) -> None:
         class ContendedRaw:
             def __init__(self) -> None:
@@ -1608,6 +1831,224 @@ class TDLibBoundaryTests(unittest.TestCase):
         self.assertEqual(search_request["chat_id"], -1001)
         self.assertEqual(search_request["query"], "needle")
         self.assertIsNone(search_request["filter"])
+
+    def test_search_chat_media_emits_only_supported_media_filters(self) -> None:
+        raw = ScriptedRaw(
+            {
+                "searchChatMessages": [
+                    {"@type": "foundChatMessages", "total_count": 0, "messages": [], "next_from_message_id": 0},
+                    {"@type": "foundChatMessages", "total_count": 0, "messages": [], "next_from_message_id": 0},
+                ]
+            }
+        )
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        client.search_chat_media(-1001, "video", from_message_id=22, limit=7)
+        client.search_chat_media(-1001, "video_note", from_message_id=11, limit=3)
+
+        self.assertEqual(
+            raw.sent,
+            [
+                {
+                    "@type": "searchChatMessages",
+                    "chat_id": -1001,
+                    "topic_id": None,
+                    "query": "",
+                    "sender_id": None,
+                    "from_message_id": 22,
+                    "offset": 0,
+                    "limit": 7,
+                    "filter": {"@type": "searchMessagesFilterVideo"},
+                    "@extra": raw.sent[0]["@extra"],
+                },
+                {
+                    "@type": "searchChatMessages",
+                    "chat_id": -1001,
+                    "topic_id": None,
+                    "query": "",
+                    "sender_id": None,
+                    "from_message_id": 11,
+                    "offset": 0,
+                    "limit": 3,
+                    "filter": {"@type": "searchMessagesFilterVideoNote"},
+                    "@extra": raw.sent[1]["@extra"],
+                },
+            ],
+        )
+
+    def test_search_chat_media_rejects_unsupported_filter_before_transport(self) -> None:
+        raw = ScriptedRaw({})
+        client = TDLibClient(raw=raw)
+
+        with self.assertRaises(ValueError):
+            client.search_chat_media(-1001, "photo", from_message_id=0, limit=10)
+
+        self.assertEqual(raw.sent, [])
+
+    def test_search_chat_messages_rejects_unapproved_filter_before_transport(self) -> None:
+        raw = ScriptedRaw({})
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        with self.assertRaises(ForbiddenTDLibRequest):
+            client._call(
+                {
+                    "@type": "searchChatMessages",
+                    "chat_id": -1001,
+                    "topic_id": None,
+                    "query": "",
+                    "sender_id": None,
+                    "from_message_id": 0,
+                    "offset": 0,
+                    "limit": 10,
+                    "filter": {"@type": "searchMessagesFilterPhoto"},
+                }
+            )
+
+        self.assertEqual(raw.sent, [])
+
+    def test_search_chat_messages_requires_query_and_filter_to_match(self) -> None:
+        raw = ScriptedRaw({})
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        base = {
+            "@type": "searchChatMessages",
+            "chat_id": -1001,
+            "topic_id": None,
+            "query": "needle",
+            "sender_id": None,
+            "from_message_id": 0,
+            "offset": 0,
+            "limit": 10,
+            "filter": None,
+        }
+
+        for query, media_filter in (
+            ("needle", {"@type": "searchMessagesFilterVideo"}),
+            ("", None),
+        ):
+            with self.subTest(query=query, media_filter=media_filter):
+                payload = {**base, "query": query, "filter": media_filter}
+                with self.assertRaises(ForbiddenTDLibRequest):
+                    client._call(payload)
+
+        self.assertEqual(raw.sent, [])
+
+    def test_expired_request_budget_prevents_provider_send(self) -> None:
+        raw = ScriptedRaw({})
+        client = TDLibClient(raw=raw)
+        client._ready = True
+
+        with client.request_budget(time.monotonic() - 1):
+            with self.assertRaises(TDLibDeadlineExceeded):
+                client._call({"@type": "getMe"})
+
+        self.assertEqual(raw.sent, [])
+
+    def test_request_budget_bounds_receive_and_reports_aggregate_deadline(self) -> None:
+        class WaitingRaw:
+            def __init__(self) -> None:
+                self.sent: list[dict[str, Any]] = []
+                self.received_timeouts: list[float] = []
+
+            def send(self, payload: dict[str, Any]) -> None:
+                self.sent.append(payload)
+
+            def receive(self, timeout: float) -> None:
+                self.received_timeouts.append(timeout)
+                time.sleep(timeout)
+                return None
+
+            def close(self) -> None:
+                pass
+
+        raw = WaitingRaw()
+        client = TDLibClient(raw=raw, request_timeout=1)
+        client._ready = True
+        started = time.monotonic()
+
+        with client.request_budget(started + 0.03):
+            with self.assertRaises(TDLibDeadlineExceeded):
+                client._call({"@type": "getMe"})
+
+        self.assertLess(time.monotonic() - started, 0.2)
+        self.assertTrue(raw.sent)
+        self.assertLessEqual(max(raw.received_timeouts), 0.03)
+
+    def test_per_call_timeout_remains_distinct_from_aggregate_deadline(self) -> None:
+        class WaitingRaw:
+            def send(self, payload: dict[str, Any]) -> None:
+                del payload
+
+            def receive(self, timeout: float) -> None:
+                time.sleep(timeout)
+                return None
+
+            def close(self) -> None:
+                pass
+
+        client = TDLibClient(raw=WaitingRaw(), request_timeout=0.02)
+        client._ready = True
+
+        with self.assertRaises(TDLibError) as raised:
+            client._call({"@type": "getMe"})
+
+        self.assertNotIsInstance(raised.exception, TDLibDeadlineExceeded)
+
+    def test_request_budget_is_thread_local_and_restored_after_nested_scope(self) -> None:
+        raw = ScriptedRaw({"getMe": [{"@type": "user", "id": 7}, {"@type": "user", "id": 8}]})
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        thread_errors: list[BaseException] = []
+
+        def expired_worker() -> None:
+            try:
+                with client.request_budget(time.monotonic() - 1):
+                    client._call({"@type": "getMe"})
+            except BaseException as error:
+                thread_errors.append(error)
+
+        worker = threading.Thread(target=expired_worker)
+        worker.start()
+        worker.join(timeout=2)
+
+        with client.request_budget(time.monotonic() + 1):
+            with client.request_budget(time.monotonic() - 1):
+                with self.assertRaises(TDLibDeadlineExceeded):
+                    client._call({"@type": "getMe"})
+            self.assertEqual(client._call({"@type": "getMe"})["id"], 7)
+        self.assertEqual(client._call({"@type": "getMe"})["id"], 8)
+
+        self.assertEqual(len(thread_errors), 1)
+        self.assertIsInstance(thread_errors[0], TDLibDeadlineExceeded)
+        self.assertEqual(len(raw.sent), 2)
+
+    def test_request_budget_expiry_while_waiting_for_provider_lock(self) -> None:
+        raw = ScriptedRaw({})
+        client = TDLibClient(raw=raw)
+        client._ready = True
+        errors: list[BaseException] = []
+        client._lock.acquire()
+
+        def call_with_short_budget() -> None:
+            try:
+                with client.request_budget(time.monotonic() + 0.02):
+                    client._call({"@type": "getMe"})
+            except BaseException as error:
+                errors.append(error)
+
+        worker = threading.Thread(target=call_with_short_budget)
+        try:
+            worker.start()
+            worker.join(timeout=1)
+        finally:
+            client._lock.release()
+
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(len(errors), 1)
+        self.assertIsInstance(errors[0], TDLibDeadlineExceeded)
+        self.assertEqual(raw.sent, [])
 
 
 if __name__ == "__main__":

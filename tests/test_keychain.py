@@ -3,8 +3,8 @@ from __future__ import annotations
 import subprocess
 import unittest
 
-from telegram_search_mcp.keychain import KeychainError, read_api_credentials
 from telegram_search_mcp.config import KEYCHAIN_SERVICE
+from telegram_search_mcp.keychain import KeychainError, read_api_credentials
 
 
 class KeychainTests(unittest.TestCase):

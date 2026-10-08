@@ -3,20 +3,34 @@
 from __future__ import annotations
 
 import re
+import secrets
+import time
 from collections.abc import Callable
+from contextlib import AbstractContextManager, nullcontext
 from datetime import datetime, timezone
 from typing import Any, Literal, Protocol
 from urllib.parse import urlparse
 
 from .discovery_state import CatalogPosition, ChatListName, DiscoveryRegistry
+from .verified_targets import VerifiedTargetReader
+from .chat_list_reader import ChatListReader
+from .history_reader import HistoryReader
+from .topic_history_reader import TopicHistoryReader
+from .exact_search_reader import ExactSearchReader
+from .selected_search_reader import SelectedSearchReader
+from .forum_reader import ForumTopicReader
 from .sanitize import normalize_search_text, render_evidence, sanitize_telegram_text
 from .schemas import (
+    VerifyTargetRequest, VerifyTargetResponse, ReadTargetMessagesRequest, ReadTargetMessagesResponse,
     ContextEvidence,
     Coverage,
     DiscoverTargetsRequest,
     EvidenceAnchor,
     FileEvidence,
     ResolveTargetRequest,
+    ReadHistoryRequest, ReadHistoryResponse, ListTopicsRequest, ListTopicsResponse,
+    ReadTopicHistoryRequest, ReadTopicHistoryResponse, ListChatsRequest, ListChatsResponse,
+    SearchMessagesRequest, SearchMessagesResponse, SearchChatsRequest, SearchChatsResponse,
     SearchMatch,
     SearchRequest,
     SearchResponse,
@@ -36,6 +50,10 @@ from .tdjson import (
 
 
 class ReadOnlyTelegramClient(Protocol):
+    def get_account_id(self) -> int: ...
+
+    def request_budget(self, deadline: float) -> AbstractContextManager[None]: ...
+
     def ensure_ready(self) -> None: ...
 
     def resolve_target(self, target: str | int) -> dict[str, Any]: ...
@@ -49,6 +67,10 @@ class ReadOnlyTelegramClient(Protocol):
     def get_recent_main_chat_ids(self) -> list[int]: ...
 
     def get_chat_list_prefix(self, chat_list: ChatListName) -> list[int]: ...
+
+    def get_chat_list_snapshot(self, chat_list: ChatListName, *, limit: int) -> dict[str, Any]: ...
+
+    def get_chat_metadata(self, chat_id: int) -> dict[str, Any]: ...
 
     def load_more_chats(
         self,
@@ -67,6 +89,18 @@ class ReadOnlyTelegramClient(Protocol):
     def search_chat_messages(
         self, chat_id: int, query: str, *, from_message_id: int, limit: int
     ) -> dict[str, Any]: ...
+
+    def search_chat_media(
+        self, chat_id: int, media_type: str, *, from_message_id: int, limit: int
+    ) -> dict[str, Any]: ...
+
+    def resolve_forum_chat(self, chat_id: int) -> dict[str, Any]: ...
+
+    def get_forum_topics(self, chat_id: int, *, offset_date: int = 0,
+                         offset_message_id: int = 0, offset_forum_topic_id: int = 0,
+                         limit: int = 20) -> dict[str, Any]: ...
+
+    def get_forum_topic(self, chat_id: int, forum_topic_id: int) -> dict[str, Any] | None: ...
 
     def get_chat_history(
         self, chat_id: int, *, from_message_id: int, limit: int
@@ -230,7 +264,8 @@ def _extract_file(message: dict[str, Any]) -> FileEvidence | None:
             )
             file_object = largest.get("photo")
     elif isinstance(media, dict):
-        file_object = media.get(object_key)
+        file_key = {"voice_note": "voice", "video_note": "video"}.get(media_type, object_key)
+        file_object = media.get(file_key)
     name = media.get("file_name") if isinstance(media, dict) else None
     mime = media.get("mime_type") if isinstance(media, dict) else None
     return FileEvidence(
@@ -298,18 +333,70 @@ class SearchService:
         client: ReadOnlyTelegramClient,
         discovery_registry: DiscoveryRegistry | None = None,
         owns_client: bool = True,
+        client_id: str | None = None,
+        broker_generation: str | None = None,
     ) -> None:
         self._client = client
         self._owns_client = owns_client
+        client_id = client_id or secrets.token_hex(16)
+        broker_generation = broker_generation or secrets.token_hex(16)
+        self._verified_target_reader = VerifiedTargetReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._chat_list_reader = ChatListReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._selected_search_reader = SelectedSearchReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._exact_search_reader = ExactSearchReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._topic_history_reader = TopicHistoryReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._forum_reader = ForumTopicReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
+        self._history_reader = HistoryReader(client=client,
+            client_id=client_id, broker_generation=broker_generation)
         self._discovery_registry = (
             discovery_registry
             if discovery_registry is not None
             else DiscoveryRegistry(ttl_seconds=300, capacity=4)
         )
 
+    def close_verified_targets(self) -> None:
+        self._verified_target_reader.close()
+
     def close(self) -> None:
+        self.close_verified_targets()
+        self._chat_list_reader.close()
+        self._exact_search_reader.close()
+        self._selected_search_reader.close()
+        self._topic_history_reader.close()
+        self._history_reader.close()
+        self._forum_reader.close()
         if self._owns_client:
             self._client.close()
+
+    def verify_target(self, request: VerifyTargetRequest, *, deadline: float | None = None) -> VerifyTargetResponse:
+        return self._verified_target_reader.verify(request, deadline=deadline)
+
+    def read_target_messages(self, request: ReadTargetMessagesRequest, *, deadline: float | None = None) -> ReadTargetMessagesResponse:
+        return self._verified_target_reader.read(request, deadline=deadline)
+
+    def list_chats(self, request: ListChatsRequest, *, deadline: float | None = None) -> ListChatsResponse:
+        return self._chat_list_reader.read(request, deadline=deadline)
+
+    def search_chats(self, request: SearchChatsRequest, *, deadline: float | None = None) -> SearchChatsResponse:
+        return self._selected_search_reader.read(request, deadline=deadline)
+
+    def search_messages(self, request: SearchMessagesRequest, *, deadline: float | None = None) -> SearchMessagesResponse:
+        return self._exact_search_reader.read(request, deadline=deadline)
+
+    def read_topic_history(self, request: ReadTopicHistoryRequest, *, deadline: float | None = None) -> ReadTopicHistoryResponse:
+        return self._topic_history_reader.read(request, deadline=deadline)
+
+    def list_topics(self, request: ListTopicsRequest, *, deadline: float | None = None) -> ListTopicsResponse:
+        return self._forum_reader.read(request, deadline=deadline)
+
+    def read_history(self, request: ReadHistoryRequest, *, deadline: float | None = None) -> ReadHistoryResponse:
+        return self._history_reader.read(request, deadline=deadline)
 
     def resolve(self, request: ResolveTargetRequest) -> TargetResolutionResponse:
         try:
@@ -337,11 +424,18 @@ class SearchService:
             registry=self._discovery_registry,
         ).discover(request)
 
-    def search(self, request: SearchRequest) -> SearchResponse:
+    def search(self, request: SearchRequest, *, deadline: float | None = None) -> SearchResponse:
+        budget = self._client.request_budget(deadline) if deadline is not None else nullcontext()
+        with budget:
+            return self._search(request, deadline)
+
+    def _search(self, request: SearchRequest, deadline: float | None) -> SearchResponse:
         try:
             self._client.ensure_ready()
         except AuthorizationBlocked:
             return self._terminal_response(request, "blocked", "TDLib authorization is not ready")
+        except TDLibError:
+            return self._terminal_response(request, "error", "Telegram search failed safely")
         try:
             chat = self._client.resolve_target(request.target)
             chat_id = chat.get("id")
@@ -351,7 +445,7 @@ class SearchService:
                 raise TDLibError("TDLib returned a different chat")
             chat_link_candidate = self._client.get_chat_link(chat)
             chat_url = self._safe_link(chat_link_candidate)
-            return self._search_chat(request, chat_id, chat_url)
+            return self._search_chat(request, chat_id, chat_url, deadline)
         except AuthorizationBlocked:
             return self._terminal_response(request, "blocked", "TDLib authorization is not ready")
         except SecretChatRejected:
@@ -391,6 +485,7 @@ class SearchService:
         request: SearchRequest,
         chat_id: int,
         chat_url: str | None,
+        deadline: float | None,
     ) -> SearchResponse:
         date_from, date_to = self._bounds(request)
         provider_text_by_id: dict[int, str] | None = None
@@ -433,6 +528,7 @@ class SearchService:
             date_from,
             date_to,
             chat_url,
+            deadline,
         )
 
         content_complete = text_complete and numeric_complete
@@ -568,6 +664,8 @@ class SearchService:
         date_from: int | None,
         date_to: int | None,
     ) -> tuple[set[int], bool]:
+        if request.query.media_type in {"video", "video_note"}:
+            return self._direct_media_hits(request, chat_id, date_from, date_to)
         hits: set[int] = set()
         from_message_id = 0
         seen_offsets: set[int] = set()
@@ -606,6 +704,62 @@ class SearchService:
             seen_offsets.add(next_offset)
             from_message_id = next_offset
 
+    def _direct_media_hits(
+        self,
+        request: SearchRequest,
+        chat_id: int,
+        date_from: int | None,
+        date_to: int | None,
+    ) -> tuple[set[int], bool]:
+        """Traverse the provider's media index, never unrelated chat history."""
+        hits: set[int] = set()
+        from_message_id = 0
+        integrity_complete = True
+        while True:
+            try:
+                response = self._client.search_chat_media(
+                    chat_id, request.query.media_type,
+                    from_message_id=from_message_id, limit=100,
+                )
+            except AuthorizationBlocked:
+                raise
+            except TDLibError:
+                return hits, False
+            messages = response.get("messages")
+            if response.get("@type") != "foundChatMessages" or not isinstance(messages, list):
+                return hits, False
+            for message in messages:
+                if (
+                    not isinstance(message, dict)
+                    or type(message.get("id")) is not int or message["id"] <= 0
+                    or type(message.get("chat_id")) is not int or message["chat_id"] != chat_id
+                    or type(message.get("date")) is not int or message["date"] < 0
+                    or not isinstance(message.get("content"), dict)
+                ):
+                    integrity_complete = False
+                    continue
+                file_evidence = _extract_file(message)
+                if file_evidence is None or file_evidence.media_type != request.query.media_type:
+                    integrity_complete = False
+                    continue
+                if date_from is not None and message["date"] < date_from:
+                    continue
+                if date_to is not None and message["date"] > date_to:
+                    continue
+                if self._file_matches(request, file_evidence):
+                    hits.add(message["id"])
+            next_offset = response.get("next_from_message_id")
+            if type(next_offset) is not int or next_offset < 0:
+                return hits, False
+            if next_offset == 0:
+                return hits, integrity_complete
+            if (
+                not request.require_complete or not messages
+                or from_message_id > 0 and next_offset >= from_message_id
+            ):
+                return hits, False
+            from_message_id = next_offset
+
     def _rehydrate(
         self,
         request: SearchRequest,
@@ -615,10 +769,17 @@ class SearchService:
         date_from: int | None,
         date_to: int | None,
         chat_url: str | None,
+        deadline: float | None,
     ) -> tuple[list[SearchMatch], bool]:
         matches: list[SearchMatch] = []
         complete = True
-        for message_id in candidate_ids:
+        # TDLib message IDs are ordered chronologically. Enrich only the
+        # newest requested matches; deleted/changed candidates are backfilled.
+        for message_id in sorted(candidate_ids, reverse=True):
+            if len(matches) >= request.limit:
+                break
+            if deadline is not None and time.monotonic() >= deadline:
+                return matches, False
             try:
                 message = self._client.get_message(chat_id, message_id)
             except MessageNotFound:
@@ -677,6 +838,13 @@ class SearchService:
             context, context_complete = self._context(request, chat_id, message)
             complete = complete and context_complete
             link = self._safe_link(self._client.get_message_link(chat_id, message_id))
+            try:
+                sender = self._client.get_sender_name(message)
+            except AuthorizationBlocked:
+                raise
+            except TDLibError:
+                complete = False
+                continue
             snippet_source = text or (file_evidence.name if file_evidence else "") or "message"
             snippet = (
                 _render_match_evidence(snippet_source, match_spans)
@@ -689,7 +857,7 @@ class SearchService:
                     message_id=message_id,
                     date_utc=_date_utc(timestamp),
                     sender=sanitize_telegram_text(
-                        self._client.get_sender_name(message), max_length=256
+                        sender, max_length=256
                     ),
                     snippet=snippet,
                     context=context,

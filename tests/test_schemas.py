@@ -191,7 +191,7 @@ class SearchRequestTests(unittest.TestCase):
 
 class ResolveTargetRequestTests(unittest.TestCase):
     def test_accepts_natural_language_and_saved_messages_aliases(self) -> None:
-        for target in ("Project Lantern", " Saved Messages ", "Избранное", "東京 ✨"):
+        for target in ("Клуб настольных игр", " Saved Messages ", "Избранное", "東京 ✨"):
             request = ResolveTargetRequest.model_validate({"target": target})
             self.assertEqual(request.target, target.strip())
 

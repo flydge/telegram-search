@@ -216,30 +216,18 @@ def _run_launchctl(
     *,
     runner: Runner,
     required: bool,
+    timeout: float = 30,
 ) -> subprocess.CompletedProcess[str]:
     completed = runner(
         arguments,
         capture_output=True,
         text=True,
         check=False,
-        timeout=30,
+        timeout=timeout,
     )
     if required and completed.returncode != 0:
         raise LaunchAgentError("launchctl operation failed")
     return completed
-
-
-def _wait_for_launch_agent_exit(*, service: str, runner: Runner) -> None:
-    for _ in range(100):
-        status = _run_launchctl(
-            [LAUNCHCTL, "print", service],
-            runner=runner,
-            required=False,
-        )
-        if status.returncode != 0:
-            return
-        time.sleep(0.1)
-    raise LaunchAgentError("launchctl service did not stop")
 
 
 def install_launch_agent(
@@ -263,17 +251,24 @@ def install_launch_agent(
         runner=runner,
         required=False,
     )
-    _wait_for_launch_agent_exit(service=service, runner=runner)
+    # A successful bootout may return before launchd retires the registration.
+    for _ in range(50):
+        state = _run_launchctl(
+            [LAUNCHCTL, "print", service], runner=runner, required=False, timeout=1,
+        )
+        if state.returncode == 113:  # launchd: service not found
+            break
+        if state.returncode != 0:
+            raise LaunchAgentError("unable to verify previous service shutdown")
+        time.sleep(0.1)
+    else:
+        raise LaunchAgentError("previous service did not shut down")
     _run_launchctl(
         [LAUNCHCTL, "bootstrap", domain, str(plist_path)],
         runner=runner,
         required=True,
     )
-    _run_launchctl(
-        [LAUNCHCTL, "kickstart", "-k", service],
-        runner=runner,
-        required=True,
-    )
+    # RunAtLoad starts the new broker; kickstart -k would terminate it again.
 
 
 def launch_agent_status(

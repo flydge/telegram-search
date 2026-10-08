@@ -17,12 +17,13 @@ class BrokerProtocolTests(unittest.TestCase):
         self.addCleanup(left.close)
         self.addCleanup(right.close)
         request = {
-            "version": 1,
+            "version": protocol.PROTOCOL_VERSION,
             "client_id": "client_abcdefghijklmnopqrstuvwxyz012345",
             "request_id": "request_abcdefghijklmnopqrstuvwxyz012345",
             "operation": "resolve",
             "payload": {"target": "@known_chat"},
             "deadline": 42.5,
+            "broker_generation": None,
         }
 
         protocol.send_frame(left, request, max_bytes=1024)
@@ -42,12 +43,13 @@ class BrokerProtocolTests(unittest.TestCase):
         protocol.send_frame(
             left,
             {
-                "version": 1,
+                "version": protocol.PROTOCOL_VERSION,
                 "client_id": "client_abcdefghijklmnopqrstuvwxyz012345",
                 "request_id": "request_abcdefghijklmnopqrstuvwxyz012345",
                 "operation": "raw_execute",
                 "payload": {},
                 "deadline": 42.5,
+            "broker_generation": None,
             },
             max_bytes=1024,
         )

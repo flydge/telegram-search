@@ -11,7 +11,7 @@ from unittest import mock
 from telegram_search_mcp.broker_protocol import (
     MAX_RESPONSE_BYTES,
     PROTOCOL_VERSION,
-    receive_request,
+    receive_request as receive_wire_request,
     send_frame,
 )
 from telegram_search_mcp.schemas import (
@@ -20,6 +20,18 @@ from telegram_search_mcp.schemas import (
     SearchRequest,
 )
 
+
+
+def receive_request(connection):
+    """Simulated broker transport performs the real contract exchange first."""
+    from telegram_search_mcp.contract import contract_descriptor
+    from telegram_search_mcp.config import RuntimePolicy
+    hello = receive_wire_request(connection)
+    assert hello["operation"] == "handshake"
+    descriptor = {**contract_descriptor(RuntimePolicy()), "broker_generation": "broker_" + "a" * 32}
+    send_frame(connection, {"version": PROTOCOL_VERSION, "request_id": hello["request_id"],
+                            "ok": True, "result": descriptor}, max_bytes=MAX_RESPONSE_BYTES)
+    return receive_wire_request(connection)
 
 def resolved_response() -> dict[str, object]:
     return {

@@ -1,0 +1,13 @@
+include README.md
+include .gitignore
+include .codex/config.toml.example
+include docs/security.md
+include skills/telegram-search/SKILL.md
+recursive-include src/telegram_search_mcp *.py
+recursive-include tests *.py
+include tests/fixtures/legacy_0_13_tool_hashes.json
+include tests/fixtures/legacy_0_15_tool_hashes.json
+global-exclude __pycache__ *.py[cod] .DS_Store
+include tests/fixtures/legacy_0_16_tool_hashes.json
+include tests/fixtures/legacy_0_17_tool_hashes.json
+include tests/fixtures/reply_source_v1_v7.json

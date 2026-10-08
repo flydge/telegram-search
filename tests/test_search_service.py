@@ -18,7 +18,17 @@ from telegram_search_mcp.schemas import (
     ResolveTargetRequest,
     SearchRequest,
 )
-from telegram_search_mcp.search_service import SearchService
+from telegram_search_mcp.search_service import SearchService, _extract_file
+
+
+class FileMetadataTests(unittest.TestCase):
+    def test_voice_note_uses_nested_voice_file_size(self) -> None:
+        evidence = _extract_file({"content": {
+            "@type": "messageVoiceNote",
+            "voice_note": {"mime_type": "audio/ogg", "voice": {"@type": "file", "id": 3, "size": 77}},
+        }})
+        self.assertIsNotNone(evidence)
+        self.assertEqual(evidence.size, 77)
 from telegram_search_mcp.tdjson import (
     AuthorizationBlocked,
     GlobalMessagePage,

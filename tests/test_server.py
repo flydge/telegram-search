@@ -3,17 +3,28 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import io
+import os
+import tempfile
 import subprocess
 import sys
 import unittest
 from datetime import datetime, timezone
 from typing import Any
+from pathlib import Path
 from unittest.mock import patch
 
 from mcp import Client
+from PIL import Image
 
 from telegram_search_mcp.broker_client import BrokerClient
 from telegram_search_mcp.schemas import (
+    AttachmentRequest,
+    AttachmentResponse,
+    MessageContextRequest,
+    MessageContextResponse,
+    ReadAttachmentRequest,
+    ReadAttachmentResponse,
+    AttachmentImage,
     Coverage,
     DiscoverTargetsRequest,
     ResolveTargetRequest,
@@ -110,21 +121,88 @@ class StubService:
     def close(self) -> None:
         pass
 
+    def get_attachment(self, request: AttachmentRequest) -> AttachmentResponse:
+        return AttachmentResponse(
+            status="too_large", anchor=request.anchor, coverage="none",
+            detail="attachment exceeds the transfer limit",
+        )
+
+    def get_message_context(self, request: MessageContextRequest) -> MessageContextResponse:
+        return MessageContextResponse(
+            status="complete", anchor=request.anchor, messages=[],
+            coverage_complete=True, detail="bounded context around exact anchor",
+        )
+
+    def read_attachment(self, request: ReadAttachmentRequest) -> ReadAttachmentResponse:
+        return ReadAttachmentResponse(
+            status="complete", text="synthetic text", processed_bytes=14, total_bytes=14,
+            coverage_complete=True, detail="bounded local document read",
+        )
+
 
 class MCPServerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_get_attachment_accepts_only_exact_anchor(self) -> None:
+        async with Client(self.server) as client:
+            result = await client.call_tool("get_attachment", {"anchor": {"chat_id": 7, "message_id": 8}})
+
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["status"], "too_large")
+        self.assertEqual(result.structured_content["anchor"], {"chat_id": 7, "message_id": 8})
+
+    async def test_get_message_context_accepts_bounded_radius(self) -> None:
+        async with Client(self.server) as client:
+            result = await client.call_tool("get_message_context", {
+                "anchor": {"chat_id": 7, "message_id": 8}, "radius": 2,
+            })
+
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["status"], "complete")
+
+    async def test_read_attachment_returns_bounded_text_by_artifact_id(self) -> None:
+        artifact_id = "artifact_" + "a" * 32 + "_" + "b" * 64 + "_14"
+        async with Client(self.server) as client:
+            result = await client.call_tool("read_attachment", {"artifact_id": artifact_id})
+
+        self.assertFalse(result.is_error)
+        self.assertEqual(result.structured_content["text"], "synthetic text")
+
+    async def test_read_attachment_exposes_actual_image_content_to_mcp_client(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            artifact_id = "artifact_" + "a" * 32 + "_" + "b" * 64 + "_80"
+            path = root / artifact_id
+            Image.new("RGB", (2, 2), "red").save(path, format="PNG")
+            os.chmod(path, 0o600)
+
+            class ImageService(StubService):
+                def read_attachment(self, request: ReadAttachmentRequest) -> ReadAttachmentResponse:
+                    return ReadAttachmentResponse(
+                        status="complete", coverage_complete=True, detail="synthetic image",
+                        images=[AttachmentImage(
+                            artifact_id=request.artifact_id, artifact_path=str(path),
+                            mime_type="image/png",
+                        )],
+                    )
+
+            server = build_server(service_factory=ImageService, artifact_root=root)
+            async with Client(server) as client:
+                result = await client.call_tool("read_attachment", {"artifact_id": artifact_id})
+
+            self.assertFalse(result.is_error)
+            self.assertTrue(any(block.type == "image" for block in result.content))
     async def asyncSetUp(self) -> None:
         self.service = StubService()
         self.server = build_server(service_factory=lambda: self.service)
 
-    async def test_tools_list_exposes_exactly_four_strict_read_only_tools(self) -> None:
+    async def test_tools_list_exposes_strict_search_and_attachment_tools(self) -> None:
         async with Client(self.server) as client:
             listing = await client.list_tools()
 
         self.assertEqual(
             [tool.name for tool in listing.tools],
-            ["_manifest", "resolve_target", "discover_targets", "search_correspondence"],
+            ["_manifest", "resolve_target", "discover_targets", "search_correspondence", "get_attachment", "get_message_context", "read_attachment", "analyze_media", "create_local_artifact", "begin_local_upload", "append_local_upload", "finish_local_upload", "prepare_text_send", "send_prepared_text", "prepare_artifact_send", "send_prepared_artifact", "read_messages", "read_history", "read_reply_chain", "list_topics", "read_topic_history", "search_messages", "list_chats", "search_chats", "verify_target", "read_target_messages", "read_attachment_page", "read_spreadsheet", "read_presentation", "prepare_reply_artifact_send", "get_reply_artifact_draft", "update_reply_artifact_draft", "refresh_reply_artifact_draft", "prepare_reply_text_send", "get_reply_draft", "update_reply_draft", "refresh_reply_draft", "list_drafts", "get_send_status", "get_draft", "cancel_draft", "update_draft", "refresh_draft"],
         )
-        for tool in listing.tools:
+        for tool in listing.tools[:4]:
             self.assertTrue(tool.annotations.read_only_hint)
             self.assertFalse(tool.annotations.destructive_hint)
             self.assertTrue(tool.annotations.idempotent_hint)
@@ -191,6 +269,10 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
         )
         media_types = query_schema["properties"]["media_type"]["anyOf"][0]["enum"]
         self.assertNotIn("other", media_types)
+        attachment_tool = listing.tools[4]
+        self.assertFalse(attachment_tool.annotations.read_only_hint)
+        self.assertFalse(attachment_tool.input_schema["additionalProperties"])
+        self.assertEqual(set(attachment_tool.input_schema["properties"]), {"anchor"})
 
     def test_default_service_is_a_lazy_broker_proxy(self) -> None:
         service = server_module._default_service()
@@ -224,9 +306,9 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
         manifest = result.structured_content
         self.assertEqual(
             manifest["tools"],
-            ["_manifest", "resolve_target", "discover_targets", "search_correspondence"],
+            ["_manifest", "resolve_target", "discover_targets", "search_correspondence", "get_attachment", "get_message_context", "read_attachment", "analyze_media", "create_local_artifact", "begin_local_upload", "append_local_upload", "finish_local_upload", "prepare_reply_artifact_send", "get_reply_artifact_draft", "update_reply_artifact_draft", "refresh_reply_artifact_draft", "prepare_reply_text_send", "get_reply_draft", "update_reply_draft", "refresh_reply_draft", "prepare_text_send", "send_prepared_text", "prepare_artifact_send", "send_prepared_artifact", "read_messages", "read_history", "read_reply_chain", "list_topics", "read_topic_history", "search_messages", "list_chats", "search_chats", "verify_target", "read_target_messages", "read_attachment_page", "read_spreadsheet", "read_presentation", "list_drafts", "get_draft", "get_send_status", "cancel_draft", "update_draft", "refresh_draft"],
         )
-        self.assertTrue(manifest["read_only"])
+        self.assertFalse(manifest["read_only"])
         self.assertEqual(manifest["authorization_required"], "authorizationStateReady")
         self.assertIn("untrusted", manifest["trust_boundary"].casefold())
         self.assertEqual(manifest["semantic_layer"], "Codex agent")
@@ -249,7 +331,7 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("transient", exact_chat_analysis.casefold())
         self.assertIn("exact chat", exact_chat_analysis.casefold())
         forbidden = " ".join(manifest["forbidden"])
-        self.assertIn("download", forbidden.casefold())
+        self.assertIn("caller-controlled attachment paths", forbidden.casefold())
         self.assertIn("null-list global search", forbidden.casefold())
         self.assertIn("caller-controlled provider controls", forbidden.casefold())
         self.assertIn("semantic scoring", forbidden.casefold())
@@ -276,6 +358,45 @@ class MCPServerTests(unittest.IsolatedAsyncioTestCase):
             "resolve_target",
             "discover_targets",
             "search_correspondence",
+            "get_attachment",
+            "get_message_context",
+            "read_attachment",
+            "analyze_media",
+            "create_local_artifact",
+            "begin_local_upload",
+            "append_local_upload",
+            "finish_local_upload",
+            "prepare_reply_artifact_send",
+            "get_reply_artifact_draft",
+            "update_reply_artifact_draft",
+            "refresh_reply_artifact_draft",
+            "prepare_reply_text_send",
+            "get_reply_draft",
+            "update_reply_draft",
+            "refresh_reply_draft",
+            "prepare_text_send",
+            "send_prepared_text",
+            "prepare_artifact_send",
+            "send_prepared_artifact",
+            "read_messages",
+            "read_history",
+            "read_reply_chain",
+            "list_topics",
+            "read_topic_history",
+            "search_messages",
+            "list_chats",
+            "search_chats",
+            "verify_target",
+            "read_target_messages",
+            "read_attachment_page",
+            "read_spreadsheet",
+            "read_presentation",
+            "list_drafts",
+            "get_draft",
+            "get_send_status",
+            "cancel_draft",
+            "update_draft",
+            "refresh_draft",
         ])
 
     async def test_resolve_target_validates_and_forwards_only_a_request(self) -> None:

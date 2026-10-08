@@ -4,19 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-search-mcp"
-version = "0.1.0"
-description = "Read-only, evidence-backed Telegram chat search over STDIO MCP"
+dynamic = ["version"]
+description = "Evidence-backed Telegram search and explicitly approved sending over STDIO MCP"
 requires-python = ">=3.11,<3.15"
 dependencies = [
   "mcp==2.2.0",
+  "PyMuPDF==1.26.4",
+  "python-docx==1.2.0",
+  "Pillow==11.3.0",
 ]
 
 [project.scripts]
 telegram-search-mcp = "telegram_search_mcp.server:main"
 telegram-search-broker = "telegram_search_mcp.launch_agent:main"
+telegram-search-transfer = "telegram_search_mcp.transfer_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "telegram_search_mcp.__version__"}
+
+[tool.setuptools.data-files]
+"share/telegram-search-mcp" = ["README.md"]
+"share/telegram-search-mcp/docs" = ["docs/security.md"]
+"share/telegram-search-mcp/.codex" = [".codex/config.toml.example"]
+"share/telegram-search-mcp/skills/telegram-search" = ["skills/telegram-search/SKILL.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -9,13 +9,14 @@ import socket
 import struct
 from typing import Any, Final
 
-PROTOCOL_VERSION: Final = 1
+PROTOCOL_VERSION: Final = 2
 MAX_REQUEST_BYTES: Final = 1024 * 1024
 MAX_RESPONSE_BYTES: Final = 8 * 1024 * 1024
 MAX_DEADLINE_SECONDS: Final = 570.0
 FRAME_READ_TIMEOUT_SECONDS: Final = 0.25
 OPERATIONS: Final = frozenset(
-    {"resolve", "discover", "search", "check", "health", "release_client"}
+    {"prepare_reply_artifact_send", "get_reply_artifact_draft", "update_reply_artifact_draft", "refresh_reply_artifact_draft", "prepare_reply_text_send", "get_reply_draft", "update_reply_draft", "refresh_reply_draft", "update_draft", "refresh_draft", "get_send_status"} |
+    {"list_drafts", "get_draft", "cancel_draft", "read_presentation", "read_spreadsheet", "read_attachment_page", "verify_target", "read_target_messages", "search_chats", "list_chats", "search_messages", "read_topic_history", "list_topics", "read_reply_chain", "read_history", "read_messages", "handshake", "resolve", "discover", "search", "get_message_context", "get_attachment", "read_attachment", "analyze_media", "create_local_artifact", "begin_local_upload", "append_local_upload", "finish_local_upload", "prepare_text_send", "send_prepared_text", "prepare_artifact_send", "send_prepared_artifact", "check", "health", "release_client"}
 )
 
 _REQUEST_KEYS = {
@@ -25,6 +26,7 @@ _REQUEST_KEYS = {
     "operation",
     "payload",
     "deadline",
+    "broker_generation",
 }
 _IDENTIFIER = re.compile(r"^(?:client|request)_[A-Za-z0-9_-]{24,80}$")
 
@@ -105,6 +107,9 @@ def validate_request(value: object) -> dict[str, Any]:
         raise BrokerProtocolError("operation is not allowed")
     if not isinstance(value["payload"], dict):
         raise BrokerProtocolError("payload must be an object")
+    generation = value["broker_generation"]
+    if generation is not None and (not isinstance(generation, str) or not re.fullmatch(r"broker_[0-9a-f]{32}", generation)):
+        raise BrokerProtocolError("broker generation is invalid")
     deadline = value["deadline"]
     if type(deadline) not in (int, float) or not math.isfinite(deadline) or deadline <= 0:
         raise BrokerProtocolError("deadline is invalid")
